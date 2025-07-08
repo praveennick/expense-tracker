@@ -1,4 +1,3 @@
-// NOTE: This is the updated foundational code structure with all requested enhancements
 // File: pages/index.js
 
 "use client";
@@ -29,12 +28,32 @@ export default function Home() {
   const [transferDetails, setTransferDetails] = useState(null);
   const [rentPaidFromS, setRentPaidFromS] = useState(false);
   const [bankBaseBalances, setBankBaseBalances] = useState({ S: 22000, K: 12300 });
+  const [bankAccounts, setBankAccounts] = useState([]);
 
   useEffect(() => {
     const saved = localStorage.getItem("bankBaseBalances");
     if (saved) setBankBaseBalances(JSON.parse(saved));
   }, []);
 
+  // Load on mount
+  useEffect(() => {
+    const saved = JSON.parse(localStorage.getItem("expenseTrackerData") || "{}");
+    if (saved.bankAccounts?.length) setBankAccounts(saved.bankAccounts);
+    else setBankAccounts(["s", "u", "k", "i", "sc"]); // default
+  }, []);
+
+
+  // Save to localStorage on update
+  useEffect(() => {
+    const existing = JSON.parse(localStorage.getItem("expenseTrackerData") || "{}");
+    localStorage.setItem(
+      "expenseTrackerData",
+      JSON.stringify({
+        ...existing,
+        bankAccounts,
+      })
+    );
+  }, [bankAccounts]);
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -239,12 +258,15 @@ export default function Home() {
 
       <div className="p-4">
         <BaseBankEditor
+          bankAccounts={bankAccounts}
+          setBankAccounts={setBankAccounts}
           bankBaseBalances={bankBaseBalances}
           onUpdate={(updated) => {
             setBankBaseBalances(updated);
             localStorage.setItem("bankBaseBalances", JSON.stringify(updated));
           }}
         />
+
       </div>
 
       <div className="flex items-center gap-4 mb-4">
@@ -257,7 +279,7 @@ export default function Home() {
         <label htmlFor="rentPaid" className="text-gray-700">I have already paid the rent from State Bank</label>
       </div>
 
-      <BalanceEntry onBalanceSubmit={setCurrentBalances} />
+      <BalanceEntry bankAccounts={bankAccounts} onBalanceSubmit={setCurrentBalances} />
 
       <button onClick={calculateTransfers} className="mt-2 bg-blue-500 text-white py-2 px-4 rounded">
         Calculate Transfers
