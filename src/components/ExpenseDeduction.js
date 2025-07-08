@@ -1,87 +1,65 @@
-// components/ExpenseDeduction.js
-import { useState } from 'react';
+"use client";
 
-export default function ExpenseDeduction({ onExpensesSubmit }) {
-    const [regularExpenses, setRegularExpenses] = useState([{ name: '', amount: 0 }]);
-    const [scExpenses, setScExpenses] = useState([{ name: '', amount: 0 }]);
+import { useEffect, useState } from "react";
 
-    const handleRegularExpenseChange = (index, field, value) => {
-        const updatedExpenses = [...regularExpenses];
-        updatedExpenses[index][field] = field === 'amount' ? parseFloat(value) || 0 : value;
-        setRegularExpenses(updatedExpenses);
+export default function ExpenseDeduction({ onExpensesSubmit, expenses: previousExpenses }) {
+    const [scExpenses, setScExpenses] = useState([{ name: "", amount: 0 }]);
+
+    useEffect(() => {
+        if (previousExpenses?.scExpenses?.length) {
+            setScExpenses(previousExpenses.scExpenses);
+        }
+    }, [previousExpenses]);
+
+    useEffect(() => {
+        onExpensesSubmit({ scExpenses });
+    }, [scExpenses]);
+
+    const handleChange = (index, field, value) => {
+        const updated = [...scExpenses];
+        updated[index][field] = field === "amount" ? parseFloat(value) || 0 : value;
+        setScExpenses(updated);
     };
 
-    const handleScExpenseChange = (index, field, value) => {
-        const updatedExpenses = [...scExpenses];
-        updatedExpenses[index][field] = field === 'amount' ? parseFloat(value) || 0 : value;
-        setScExpenses(updatedExpenses);
+    const addExpense = () => {
+        setScExpenses([...scExpenses, { name: "", amount: 0 }]);
     };
 
-    const addRegularExpense = () => {
-        setRegularExpenses([...regularExpenses, { name: '', amount: 0 }]);
-    };
-
-    const addScExpense = () => {
-        setScExpenses([...scExpenses, { name: '', amount: 0 }]);
-    };
-
-    const handleSubmit = () => {
-        onExpensesSubmit({ regularExpenses, scExpenses });
+    const removeExpense = (index) => {
+        const updated = [...scExpenses];
+        updated.splice(index, 1);
+        setScExpenses(updated);
     };
 
     return (
         <div className="bg-white shadow-md p-4 rounded-lg mb-4">
-            <h2 className="text-xl font-semibold mb-2">Enter Expenses</h2>
-
-            <div className="mb-4">
-                <h3 className="font-semibold">Regular Expenses (e.g., Rent, Power, etc.)</h3>
-                {regularExpenses.map((expense, index) => (
-                    <div key={index} className="flex gap-4 mb-2">
-                        <input
-                            type="text"
-                            placeholder="Expense Name"
-                            value={expense.name}
-                            onChange={(e) => handleRegularExpenseChange(index, 'name', e.target.value)}
-                            className="w-1/2 px-3 py-2 border border-gray-300 rounded"
-                        />
-                        <input
-                            type="number"
-                            placeholder="Amount"
-                            value={expense.amount}
-                            onChange={(e) => handleRegularExpenseChange(index, 'amount', e.target.value)}
-                            className="w-1/2 px-3 py-2 border border-gray-300 rounded"
-                        />
-                    </div>
-                ))}
-                <button onClick={addRegularExpense} className="text-blue-500">+ Add Expense</button>
-            </div>
-
-            <div className="mb-4">
-                <h3 className="font-semibold">SC Expenses (e.g., Gold Loan, Other)</h3>
-                {scExpenses.map((expense, index) => (
-                    <div key={index} className="flex gap-4 mb-2">
-                        <input
-                            type="text"
-                            placeholder="Expense Name"
-                            value={expense.name}
-                            onChange={(e) => handleScExpenseChange(index, 'name', e.target.value)}
-                            className="w-1/2 px-3 py-2 border border-gray-300 rounded"
-                        />
-                        <input
-                            type="number"
-                            placeholder="Amount"
-                            value={expense.amount}
-                            onChange={(e) => handleScExpenseChange(index, 'amount', e.target.value)}
-                            className="w-1/2 px-3 py-2 border border-gray-300 rounded"
-                        />
-                    </div>
-                ))}
-                <button onClick={addScExpense} className="text-blue-500">+ Add Expense</button>
-            </div>
-
-            <button onClick={handleSubmit} className="mt-4 bg-blue-500 text-white py-2 px-4 rounded">
-                Submit Expenses
-            </button>
+            <h2 className="text-xl font-semibold mb-2">🧾 SC Expenses (Gold Loan, Subscriptions)</h2>
+            {scExpenses.map((expense, index) => (
+                <div key={index} className="flex gap-4 mb-2">
+                    <input
+                        type="text"
+                        placeholder="Expense Name"
+                        value={expense.name}
+                        onChange={(e) => handleChange(index, "name", e.target.value)}
+                        className="w-1/2 px-3 py-2 border border-gray-300 rounded"
+                    />
+                    <input
+                        type="number"
+                        placeholder="Amount"
+                        value={expense.amount}
+                        onChange={(e) => handleChange(index, "amount", e.target.value)}
+                        className="w-1/2 px-3 py-2 border border-gray-300 rounded"
+                    />
+                    <button
+                        onClick={() => removeExpense(index)}
+                        className="text-red-500 font-bold px-2"
+                        title="Remove"
+                    >
+                        ×
+                    </button>
+                </div>
+            ))}
+            <button onClick={addExpense} className="text-blue-500 mt-2">+ Add SC Expense</button>
         </div>
     );
 }
