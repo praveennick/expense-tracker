@@ -1,9 +1,11 @@
 import ResultPage from '@/pages/ResultPage'
-import React from 'react'
+import React, { Suspense } from "react";
 
 function Result() {
     return (
-        <><ResultPage /></>
+        <Suspense fallback={<div>Loading Result...</div>}>
+            <ResultPage />
+        </Suspense>
     )
 }
 

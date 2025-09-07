@@ -8,8 +8,8 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip,
 export default function TrendChart({ history }) {
     const chartData = useMemo(() => {
         const labels = history.map((entry) => entry.month);
-        const savings = history.map((entry) => entry.savingsOrLoss);
-        const expenses = history.map((entry) => entry.totalExpenses);
+        const savings = history.map((entry) => entry?.totals?.savingsOrLoss ?? 0);
+        const expenses = history.map((entry) => entry?.totals?.totalExpenses ?? 0);
         const income = history.map((entry) => entry.income?.total || 0);
 
         return {

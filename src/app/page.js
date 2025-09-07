@@ -67,6 +67,11 @@ export default function Home() {
     setHistory(savedHistory);
   }, []);
 
+  // keep regularExpenses in sync with monthlyTasks for charts/budget
+  useEffect(() => {
+    setExpenses((prev) => ({ ...prev, regularExpenses: monthlyTasks || [] }));
+  }, [monthlyTasks]);
+
   const handleBaseBalanceChange = (key, value) => {
     const updated = { ...bankBaseBalances, [key]: parseFloat(value) || 0 };
     setBankBaseBalances(updated);
@@ -78,32 +83,43 @@ export default function Home() {
   };
 
   const calculateTransfers = () => {
-    const BASE_S = rentPaidFromS ? 7500 : bankBaseBalances.S;
-    const BASE_K = bankBaseBalances.K;
 
-    const currentS = currentBalances.s || 0;
-    const currentK = currentBalances.k || 0;
-    const currentU = currentBalances.u || 0;
+    const base = Object.fromEntries(Object.entries(bankBaseBalances || {}).map(([k, v]) => [k.toLowerCase(), v || 0]));
+    const current = Object.fromEntries(
+      bankAccounts.map((k) => [k, Number(currentBalances?.[k] || 0)])
+    );
+    if (!bankAccounts.includes("k")) return; // Kotak is mandatory for this logic
 
-    const transferToS = Math.max(BASE_S - currentS, 0);
-    const kotakExcess = Math.max(currentK - BASE_K - transferToS, 0);
+    const transfers = [];
+    let kotakSurplus = (current.k || 0) - (base.k || 0);
 
-    const settlementS = BASE_S;
-    const settlementK = BASE_K;
-    const settlementU = currentU + kotakExcess;
+    // Only show transfers to accounts listed in baseBankBalances (exclude newly added banks not part of base)
+    const eligibleTargets = Object.keys(base).filter((key) => key !== "k" && bankAccounts.includes(key));
+
+    for (const key of eligibleTargets) {
+      if (kotakSurplus > 0) {
+        const required = Math.max((base[key] || 0) - (current[key] || 0), 0);
+        const toTransfer = Math.min(required, kotakSurplus);
+        if (toTransfer > 0) {
+          current.k -= toTransfer;
+          current[key] += toTransfer;
+          kotakSurplus -= toTransfer;
+          transfers.push({ from: "k", to: key, amount: toTransfer });
+        }
+      }
+    }
+
+    const updatedSettlements = Object.fromEntries(
+      bankAccounts.map((k) => [k, Number(current[k] || 0)])
+    );
 
     setTransferDetails({
-      transferToS,
-      transferToU: kotakExcess,
-      finalSettlements: {
-        s: settlementS,
-        u: settlementU,
-        k: settlementK,
-        i: currentBalances.i,
-        sc: currentBalances.sc,
-      },
+      transfers,
+      finalSettlements: updatedSettlements,
     });
   };
+
+
 
   const handleSubmit = () => {
     if (!previousTotalBalance || !monthlyTasks || !currentBalances || !transferDetails) {
@@ -123,13 +139,11 @@ export default function Home() {
     const netAfterExpenses = rawCurrentTotal - totalExpenses;
     const savingsOrLoss = netAfterExpenses - (previousTotalBalance || 0);
 
-    const currentFinalTotal =
-      (transferDetails?.finalSettlements?.s || 0) +
-      (transferDetails?.finalSettlements?.u || 0) +
-      (transferDetails?.finalSettlements?.k || 0) +
-      (transferDetails?.finalSettlements?.i || 0) +
-      (transferDetails?.finalSettlements?.sc || 0) -
-      totalExpenses;
+    const currentFinalTotal = Object.values(transferDetails?.finalSettlements || {}).reduce(
+      (sum, val) => sum + val,
+      0
+    );
+
 
     // 🧾 Build payload
     const payload = {
@@ -144,6 +158,7 @@ export default function Home() {
       budgetLimit,
       monthlyTasks,
       bankBaseBalances,
+      transferDetails,
       totals: {
         savingsOrLoss,
         totalExpenses,
@@ -231,6 +246,12 @@ export default function Home() {
       <ExpenseCategoryChart expenses={expenses} />
       <MonthlyChecklist tasks={monthlyTasks} setTasks={setMonthlyTasks} expenses={expenses} />
       <TrendChart history={history} />
+      <ExpenseDeduction
+        expenses={expenses}
+        onExpensesSubmit={(v) =>
+          setExpenses((prev) => ({ ...prev, ...v }))
+        }
+      />
 
       <h2 className="text-xl font-semibold mb-2 mt-6">Enter Previous Month's Total Balance</h2>
       <input
@@ -288,17 +309,23 @@ export default function Home() {
       {transferDetails && (
         <div className="bg-gray-100 p-4 mt-4 rounded-lg shadow-md">
           <h2 className="text-xl font-semibold text-gray-700">Suggested Transfers</h2>
-          <p className="mt-2 text-gray-800">
-            Transfer <strong className="text-blue-600">₹{transferDetails.transferToS}</strong> from Kotak to State Bank.
-          </p>
-          <p className="text-gray-800">
-            Transfer <strong className="text-blue-600">₹{transferDetails.transferToU}</strong> from Kotak to Union Bank.
-          </p>
-          <ul className="mt-2 text-sm text-gray-700">
-            {Object.entries(transferDetails.finalSettlements).map(([bank, val]) => (
-              <li key={bank}>{bank.toUpperCase()} Balance: ₹{val}</li>
-            ))}
-          </ul>
+          {transferDetails?.transfers?.length > 0 && (
+            <div className="mt-4">
+              <p className="text-gray-800">Transfer Suggestions:</p>
+              {transferDetails.transfers.map((t, index) => (
+                <p key={index}>
+                  • Transfer ₹{t.amount} from {t.from.toUpperCase()} to {t.to.toUpperCase()}
+                </p>
+              ))}
+            </div>
+          )}
+          {transferDetails?.finalSettlements && (
+            <ul className="mt-2 text-sm text-gray-700">
+              {Object.entries(transferDetails.finalSettlements).map(([bank, val]) => (
+                <li key={bank}>{bank.toUpperCase()} Balance: ₹{val}</li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 

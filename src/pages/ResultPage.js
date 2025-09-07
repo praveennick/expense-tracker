@@ -89,23 +89,32 @@ export default function ResultPage() {
                     <h2 className="text-xl font-semibold flex items-center gap-2 mb-2">
                         <AiOutlineCalculator className="text-blue-500" /> Balances & Transfers
                     </h2>
-                    <p className="text-gray-700">Previous Month Total Balance: ₹{previousTotalBalance}</p>
-                    <p className="text-gray-700 mt-2">Base Balances:</p>
-                    <ul className="text-gray-800 text-sm ml-4 list-disc">
-                        {Object.entries(bankBaseBalances).map(([key, val]) => (
-                            <li key={key}>
-                                {key} → ₹{val}
-                            </li>
-                        ))}
-                    </ul>
+                    <p className="text-gray-700">
+                        Previous Month Total Balance: ₹{Number(previousTotalBalance || 0).toLocaleString("en-IN")}
+                    </p>
 
-                    {transferDetails && (
+                    <p className="text-gray-700 mt-2">Final Balances After Transfer:</p>
+                    {transferDetails?.finalSettlements && (
+                        <ul className="text-sm text-gray-800 ml-4 list-disc">
+                            {Object.entries(transferDetails.finalSettlements).map(([key, val]) => (
+                                <li key={key}>{key.toUpperCase()} → ₹{Number(val || 0).toLocaleString("en-IN")}</li>
+                            ))}
+                        </ul>
+                    )}
+
+
+                    {transferDetails?.transfers?.length > 0 && (
                         <div className="mt-4">
                             <p className="text-gray-800">Transfer Suggestions:</p>
-                            <p>• Transfer ₹{transferDetails.transferToS} from Kotak to State Bank</p>
-                            <p>• Transfer ₹{transferDetails.transferToU} from Kotak to Union Bank</p>
+                            {transferDetails.transfers.map((t, i) => (
+                                <p key={i}>
+                                    • Transfer ₹{Number(t.amount || 0).toLocaleString("en-IN")} from{" "}
+                                    {t.from.toUpperCase()} to {t.to.toUpperCase()}
+                                </p>
+                            ))}
                         </div>
                     )}
+
 
 
                     {transferDetails?.finalSettlements && (
@@ -113,52 +122,61 @@ export default function ResultPage() {
                             <p className="text-gray-800 font-semibold">Final Balances:</p>
                             <ul className="ml-4 list-disc">
                                 {Object.entries(transferDetails.finalSettlements).map(([k, v]) => (
-                                    <li key={k}>{k.toUpperCase()}: ₹{v}</li>
+                                    <li key={k}>
+                                        {k.toUpperCase()}: ₹{Number(v || 0).toLocaleString("en-IN")}
+                                    </li>
                                 ))}
                             </ul>
                         </div>
                     )}
 
+
                 </section>
 
                 <section className="p-4 border rounded-lg bg-gray-50">
                     <h2 className="text-xl font-semibold mb-2 text-blue-600">💸 Income & Expenses</h2>
-                    <p>💰 Total Income: ₹{income.total}</p>
-                    <p>📉 Total Expenses: ₹{totals.totalExpenses}</p>
-                    <p className="text-sm text-gray-500 mt-1">(Budget Limit: ₹{budgetLimit})</p>
+                    <p>💰 Total Income: ₹{Number(income.total || 0).toLocaleString("en-IN")}</p>
+                    <p>📉 Total Expenses: ₹{Number(totals.totalExpenses || 0).toLocaleString("en-IN")}</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                        (Budget Limit: ₹{Number(budgetLimit || 0).toLocaleString("en-IN")})
+                    </p>
 
-                    <h3 className="text-md font-semibold mt-4">Regular Expenses</h3>
+                    <h3 className="text-md font-semibold mt-4">All Expenses</h3>
                     <ul className="text-gray-700 text-sm list-disc ml-5">
-                        {expenses.regularExpenses.map((e, i) => (
-                            <li key={i}>{e.name}: ₹{e.amount}</li>
-                        ))}
-                    </ul>
-
-                    <h3 className="text-md font-semibold mt-4">SC Expenses</h3>
-                    <ul className="text-gray-700 text-sm list-disc ml-5">
-                        {expenses.scExpenses.map((e, i) => (
-                            <li key={i}>{e.name}: ₹{e.amount}</li>
+                        {[
+                            ...(expenses?.regularExpenses || []),
+                            ...(expenses?.scExpenses || []),
+                        ].map((e, i) => (
+                            <li key={i}>
+                                {e.name}: ₹{Number(e.amount || 0).toLocaleString("en-IN")}
+                            </li>
                         ))}
                     </ul>
                 </section>
+
 
                 <section className="p-4 border rounded-lg shadow-md bg-green-50">
                     <h2 className="text-2xl font-semibold flex items-center gap-2 text-green-700">
                         <AiOutlineCheckCircle /> Net Result
                     </h2>
-                    <p className="text-xl mt-2">Final Total After Expenses: ₹{totals.currentFinalTotal}</p>
+                    <p className="text-xl mt-2">Final Total After Expenses: ₹ {Number(totals.currentFinalTotal || 0).toLocaleString("en-IN")}</p>
                 </section>
 
                 <section
-                    className={`p-4 rounded-lg border mt-4 ${isSavings ? "bg-green-100 border-green-300 text-green-700" : "bg-red-100 border-red-300 text-red-700"
+                    className={`p-4 rounded-lg border mt-4 ${isSavings
+                        ? "bg-green-100 border-green-300 text-green-700"
+                        : "bg-red-100 border-red-300 text-red-700"
                         }`}
                 >
                     <h2 className="text-xl font-semibold flex items-center gap-2">
                         {isSavings ? <AiOutlineArrowUp /> : <AiOutlineArrowDown />}
                         {isSavings ? "Savings" : "Loss"}
                     </h2>
-                    <p className="text-3xl font-bold mt-2">₹{Math.abs(totals.savingsOrLoss)}</p>
+                    <p className="text-3xl font-bold mt-2">
+                        ₹{Number(Math.abs(totals.savingsOrLoss) || 0).toLocaleString("en-IN")}
+                    </p>
                 </section>
+
             </div>
 
             <button
