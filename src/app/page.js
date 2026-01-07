@@ -13,6 +13,7 @@ import ExpenseCategoryChart from "../components/ExpenseCategoryChart";
 import MonthlyChecklist from "../components/MonthlyChecklist";
 import TrendChart from "../components/TrendChart";
 import BaseBankEditor from "@/components/BaseBankEditor";
+import HistoryList from "@/components/HistoryList";
 
 export default function Home() {
   const router = useRouter();
@@ -227,6 +228,33 @@ export default function Home() {
     link.click();
   };
 
+
+  const saveHistoryToStorage = (updated) => {
+    setHistory(updated);
+    localStorage.setItem("expenseHistory", JSON.stringify(updated));
+  };
+
+  const handleViewMonth = (entry) => {
+    const encoded = encodeURIComponent(JSON.stringify(entry));
+    router.push(`/result?data=${encoded}`);
+  };
+
+  const handleDeleteMonth = (entry) => {
+    const confirmDelete = window.confirm(`Delete ${entry.month}?`);
+    if (!confirmDelete) return;
+
+    const key = entry.monthKey || entry.month;
+    const updated = history.filter((h) => (h.monthKey || h.month) !== key);
+    saveHistoryToStorage(updated);
+  };
+
+  const handleClearAllHistory = () => {
+    const confirmClear = window.confirm("Clear ALL saved months?");
+    if (!confirmClear) return;
+    saveHistoryToStorage([]);
+  };
+
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-4">
@@ -253,6 +281,12 @@ export default function Home() {
           </button>
         </div>
       </div>
+      <HistoryList
+        history={history}
+        onView={handleViewMonth}
+        onDelete={handleDeleteMonth}
+        onClear={handleClearAllHistory}
+      />
 
       <IncomeEntry onIncomeSubmit={setIncome} />
       <BudgetAlert budgetLimit={budgetLimit} setBudgetLimit={setBudgetLimit} expenses={expenses} />
