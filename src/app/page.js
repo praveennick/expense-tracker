@@ -31,8 +31,9 @@ export default function Home() {
   const [bankAccounts, setBankAccounts] = useState([]);
 
   useEffect(() => {
-    const saved = localStorage.getItem("bankBaseBalances");
-    if (saved) setBankBaseBalances(JSON.parse(saved));
+    const saved = JSON.parse(localStorage.getItem("expenseTrackerData") || "{}");
+    console.log("saved", saved)
+    if (saved.bankBaseBalances) setBankBaseBalances(saved.bankBaseBalances);
   }, []);
 
   // Load on mount
@@ -83,41 +84,52 @@ export default function Home() {
   };
 
   const calculateTransfers = () => {
-
-    const base = Object.fromEntries(Object.entries(bankBaseBalances || {}).map(([k, v]) => [k.toLowerCase(), v || 0]));
+    const base = bankBaseBalances || {};
     const current = Object.fromEntries(
       bankAccounts.map((k) => [k, Number(currentBalances?.[k] || 0)])
     );
-    if (!bankAccounts.includes("k")) return; // Kotak is mandatory for this logic
+
+    if (!bankAccounts.includes("k")) return;
 
     const transfers = [];
-    let kotakSurplus = (current.k || 0) - (base.k || 0);
+    let kotakSurplus = (current.k || 0) - (Number(base.k || 0));
 
-    // Only show transfers to accounts listed in baseBankBalances (exclude newly added banks not part of base)
-    const eligibleTargets = Object.keys(base).filter((key) => key !== "k" && bankAccounts.includes(key));
+    // ✅ targets are only banks that have base defined (except k & sc)
+    const eligibleTargets = Object.keys(base).filter(
+      (key) => key !== "k" && key !== "sc" && bankAccounts.includes(key)
+    );
 
+    // 1) First satisfy base targets
     for (const key of eligibleTargets) {
-      if (kotakSurplus > 0) {
-        const required = Math.max((base[key] || 0) - (current[key] || 0), 0);
-        const toTransfer = Math.min(required, kotakSurplus);
-        if (toTransfer > 0) {
-          current.k -= toTransfer;
-          current[key] += toTransfer;
-          kotakSurplus -= toTransfer;
-          transfers.push({ from: "k", to: key, amount: toTransfer });
-        }
+      if (kotakSurplus <= 0) break;
+
+      const required = Math.max(Number(base[key] || 0) - (current[key] || 0), 0);
+      const toTransfer = Math.min(required, kotakSurplus);
+
+      if (toTransfer > 0) {
+        current.k -= toTransfer;
+        current[key] += toTransfer;
+        kotakSurplus -= toTransfer;
+        transfers.push({ from: "k", to: key, amount: toTransfer });
       }
     }
 
-    const updatedSettlements = Object.fromEntries(
-      bankAccounts.map((k) => [k, Number(current[k] || 0)])
-    );
+    // 2) ✅ remaining surplus → sc
+    if (kotakSurplus > 0 && bankAccounts.includes("sc")) {
+      current.k -= kotakSurplus;
+      current.sc = (current.sc || 0) + kotakSurplus;
+      transfers.push({ from: "k", to: "sc", amount: kotakSurplus });
+      kotakSurplus = 0;
+    }
 
     setTransferDetails({
       transfers,
-      finalSettlements: updatedSettlements,
+      // ✅ store BOTH for result page (before/after)
+      beforeBalances: { ...Object.fromEntries(bankAccounts.map((k) => [k, Number(currentBalances?.[k] || 0)])) },
+      finalSettlements: Object.fromEntries(bankAccounts.map((k) => [k, Number(current[k] || 0)])),
     });
   };
+
 
 
 
@@ -137,13 +149,14 @@ export default function Home() {
 
     const rawCurrentTotal = Object.values(currentBalances).reduce((sum, val) => sum + (val || 0), 0);
     const netAfterExpenses = rawCurrentTotal - totalExpenses;
-    const savingsOrLoss = netAfterExpenses - (previousTotalBalance || 0);
 
     const currentFinalTotal = Object.values(transferDetails?.finalSettlements || {}).reduce(
-      (sum, val) => sum + val,
+      (sum, val) => sum + (val || 0),
       0
     );
+    const finalAfterExpenses = currentFinalTotal - totalExpenses;
 
+    const savingsOrLoss = finalAfterExpenses - (previousTotalBalance || 0);
 
     // 🧾 Build payload
     const payload = {
@@ -162,9 +175,9 @@ export default function Home() {
       totals: {
         savingsOrLoss,
         totalExpenses,
-        netAfterExpenses,
         rawCurrentTotal,
         currentFinalTotal,
+        finalAfterExpenses,
       },
     };
 
@@ -284,7 +297,12 @@ export default function Home() {
           bankBaseBalances={bankBaseBalances}
           onUpdate={(updated) => {
             setBankBaseBalances(updated);
-            localStorage.setItem("bankBaseBalances", JSON.stringify(updated));
+
+            const current = JSON.parse(localStorage.getItem("expenseTrackerData") || "{}");
+            localStorage.setItem(
+              "expenseTrackerData",
+              JSON.stringify({ ...current, bankBaseBalances: updated })
+            );
           }}
         />
 

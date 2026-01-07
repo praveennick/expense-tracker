@@ -4,10 +4,11 @@ export default function BaseBankEditor({
     bankBaseBalances,
     onUpdate,
     bankAccounts,
-    setBankAccounts
+    setBankAccounts,
 }) {
     const [isEditing, setIsEditing] = useState(false);
-    const [tempBalances, setTempBalances] = useState(bankBaseBalances);
+    const [tempBalances, setTempBalances] = useState(bankBaseBalances || {});
+
     const bankNameMap = {
         s: "State Bank",
         u: "Union Bank",
@@ -17,17 +18,30 @@ export default function BaseBankEditor({
         hdfc: "HDFC Bank",
     };
 
-
+    // ✅ sync from parent (important when localStorage loads later)
     useEffect(() => {
-        const newObj = bankAccounts.reduce((acc, key) => ({
-            ...acc,
-            [key]: tempBalances[key] ?? 0,
-        }), {});
-        setTempBalances(newObj);
-    }, [bankAccounts]);
+        setTempBalances(bankBaseBalances || {});
+    }, [bankBaseBalances]);
+
+    // ✅ ensure keys exist for current bankAccounts without wiping existing values
+    useEffect(() => {
+        setTempBalances((prev) => {
+            const base = bankBaseBalances || {};
+            const merged = {};
+
+            for (const key of bankAccounts) {
+                merged[key] = prev?.[key] ?? base?.[key] ?? 0;
+            }
+
+            return merged;
+        });
+    }, [bankAccounts, bankBaseBalances]);
 
     const handleChange = (key, value) => {
-        setTempBalances({ ...tempBalances, [key]: parseFloat(value) || 0 });
+        setTempBalances((prev) => ({
+            ...prev,
+            [key]: parseFloat(value) || 0,
+        }));
     };
 
     const handleAddBank = () => {
@@ -35,7 +49,7 @@ export default function BaseBankEditor({
         if (!newBank) return;
 
         const key = newBank.toLowerCase().replace(/\s+/g, "");
-        if (tempBalances[key]) {
+        if (tempBalances[key] !== undefined) {
             alert("Bank already exists!");
             return;
         }
@@ -49,6 +63,7 @@ export default function BaseBankEditor({
     const handleRemoveBank = (key) => {
         const updated = { ...tempBalances };
         delete updated[key];
+        setTempBalances(updated);
         onUpdate(updated);
         setBankAccounts((prev) => prev.filter((b) => b !== key));
     };
@@ -61,8 +76,9 @@ export default function BaseBankEditor({
     return (
         <div className="mb-4">
             <h2 className="text-xl font-semibold mb-2">Base Bank Balances (For Settlement)</h2>
+
             <div className="grid grid-cols-2 gap-4">
-                {Object.entries(tempBalances).map(([key, val]) => (
+                {Object.entries(tempBalances || {}).map(([key, val]) => (
                     <div key={key} className="flex items-center gap-2">
                         <label className="w-40 font-semibold">
                             {bankNameMap[key.toLowerCase()] || key.toUpperCase()}
@@ -85,7 +101,7 @@ export default function BaseBankEditor({
                                 </button>
                             </>
                         ) : (
-                            <div className="text-gray-800">₹{val}</div>
+                            <div className="text-gray-800">₹{Number(val || 0).toLocaleString("en-IN")}</div>
                         )}
                     </div>
                 ))}

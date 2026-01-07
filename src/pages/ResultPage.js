@@ -89,19 +89,19 @@ export default function ResultPage() {
                     <h2 className="text-xl font-semibold flex items-center gap-2 mb-2">
                         <AiOutlineCalculator className="text-blue-500" /> Balances & Transfers
                     </h2>
-                    <p className="text-gray-700">
-                        Previous Month Total Balance: ₹{Number(previousTotalBalance || 0).toLocaleString("en-IN")}
-                    </p>
+                    <p className="text-gray-700 mt-2 font-semibold">Balances Before Transfer:</p>
+                    <ul className="text-sm text-gray-800 ml-4 list-disc">
+                        {Object.entries(transferDetails.beforeBalances || {}).map(([key, val]) => (
+                            <li key={key}>{key.toUpperCase()} → ₹{Number(val || 0).toLocaleString("en-IN")}</li>
+                        ))}
+                    </ul>
 
-                    <p className="text-gray-700 mt-2">Final Balances After Transfer:</p>
-                    {transferDetails?.finalSettlements && (
-                        <ul className="text-sm text-gray-800 ml-4 list-disc">
-                            {Object.entries(transferDetails.finalSettlements).map(([key, val]) => (
-                                <li key={key}>{key.toUpperCase()} → ₹{Number(val || 0).toLocaleString("en-IN")}</li>
-                            ))}
-                        </ul>
-                    )}
-
+                    <p className="text-gray-700 mt-4 font-semibold">Balances After Transfer:</p>
+                    <ul className="text-sm text-gray-800 ml-4 list-disc">
+                        {Object.entries(transferDetails.finalSettlements || {}).map(([key, val]) => (
+                            <li key={key}>{key.toUpperCase()} → ₹{Number(val || 0).toLocaleString("en-IN")}</li>
+                        ))}
+                    </ul>
 
                     {transferDetails?.transfers?.length > 0 && (
                         <div className="mt-4">
@@ -159,8 +159,16 @@ export default function ResultPage() {
                     <h2 className="text-2xl font-semibold flex items-center gap-2 text-green-700">
                         <AiOutlineCheckCircle /> Net Result
                     </h2>
-                    <p className="text-xl mt-2">Final Total After Expenses: ₹ {Number(totals.currentFinalTotal || 0).toLocaleString("en-IN")}</p>
+
+                    <p className="text-lg mt-2">
+                        Before Expenses (After Transfer): ₹{Number(totals.currentFinalTotal || 0).toLocaleString("en-IN")}
+                    </p>
+
+                    <p className="text-xl mt-2 font-semibold">
+                        After Expenses: ₹{Number(totals.finalAfterExpenses || 0).toLocaleString("en-IN")}
+                    </p>
                 </section>
+
 
                 <section
                     className={`p-4 rounded-lg border mt-4 ${isSavings
